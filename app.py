@@ -50,8 +50,12 @@ def obtener_datos_minimercado():
         sheet_name = urllib.parse.quote("Productos")
         url_productos = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
         
-        # Leemos el CSV limitándolo estrictamente a las primeras 7 columnas (0 a 6)
-        df = pd.read_csv(url_productos, usecols=[0, 1, 2, 3, 4, 5, 6])
+        # Lectura directa del CSV público de Google Sheets
+        df = pd.read_csv(url_productos)
+        
+        # Nos aseguramos de tomar estrictamente las primeras 7 columnas por si hay sobrantes
+        df = df.iloc[:, :7]
+        
         # Estandarizamos los nombres de las columnas internas para evitar errores
         df.columns = ['codigo', 'categoria', 'subcategoria', 'nombre', 'descripcion', 'precio', 'stock']
         return df
