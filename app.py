@@ -16,7 +16,7 @@ logging.basicConfig(
 app = Flask(__name__)
 
 # ID de Google Sheets obtenido de forma segura desde las Variables de Entorno de Render
-GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1QBXurM6ViFw0qsW9DzFXrsQQZlOADdI3jmFq-4EIm_Q")
+GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1GB6AVyHP4N63i4FrKXw6I1DR087Mm5F0xEGYnF_0_Fk")
 
 # Memoria temporal para los carritos y estados de pago
 carritos_clientes = {}
@@ -50,7 +50,8 @@ def obtener_datos_minimercado():
         sheet_name = urllib.parse.quote("Productos")
         url_productos = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
         
-        df = pd.read_csv(url_productos)
+        # Leemos el CSV limitándolo estrictamente a las primeras 7 columnas (0 a 6)
+        df = pd.read_csv(url_productos, usecols=[0, 1, 2, 3, 4, 5, 6])
         # Estandarizamos los nombres de las columnas internas para evitar errores
         df.columns = ['codigo', 'categoria', 'subcategoria', 'nombre', 'descripcion', 'precio', 'stock']
         return df
