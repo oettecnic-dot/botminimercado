@@ -35,7 +35,7 @@ def ttl_cache(ttl_seconds=300):
                 if now - timestamp < ttl_seconds:
                     logging.info("⚡ Usando datos en caché de Google Sheets (sin llamadas externas).")
                     return result
-
+            
             logging.info("🔄 Descargando datos frescos desde Google Sheets...")
             result = func(*args, **kwargs)
             cache[key] = (result, now)
@@ -43,13 +43,13 @@ def ttl_cache(ttl_seconds=300):
         return wrapper
     return decorator
 
-# Función auxiliar para leer los datos del Minimercado con Caché integrada
+# Función auxiliar para leer los datos del Minimercado (Pestaña "Productos")
 @ttl_cache(ttl_seconds=300)
 def obtener_datos_minimercado():
     try:
         sheet_name = urllib.parse.quote("Productos")
         url_productos = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
-
+        
         df = pd.read_csv(url_productos)
         # Estandarizamos los nombres de las columnas internas para evitar errores
         df.columns = ['codigo', 'categoria', 'subcategoria', 'nombre', 'descripcion', 'precio', 'stock']
@@ -86,7 +86,7 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
             carrito = carritos_clientes.get(remitente, [])
             total_apagar = sum(item['precio'] for item in carrito)
             nombre_cliente = profile_name or "Cliente"
-
+            
             if msg_lower == "1":
                 metodo = "Efectivo (contra entrega)"
                 instrucciones = "Tené en cuenta el monto exacto si es posible."
@@ -113,7 +113,7 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
     elif any(word in msg_lower for word in ["hola", "buenas", "catalogo", "empezar", "comenzar"]):
         pagos_clientes[remitente] = "ninguno"
         categorias_disponibles = df_menu['categoria'].dropna().unique()
-
+        
         respuesta_texto = (
             "¡Hola! Te damos la bienvenida a nuestro *Minimercado* 🛒✨\n\n"
             "¿Qué estás buscando hoy? Podés escribir el nombre de un producto (ej: *fideos*, *coca*, *aceite*) o elegir una categoría:\n\n"
@@ -165,27 +165,27 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
         if categoria_encontrada:
             grupo = df_menu[df_menu['categoria'] == categoria_encontrada]
             respuesta_texto = f"📋 *Categoría: {str(categoria_encontrada).upper()}* 🛒\n\n"
-
+            
             for _, row in grupo.head(10).iterrows():
                 codigo = limpiar_texto(row['codigo'])
                 nombre = limpiar_texto(row['nombre'])
                 desc = limpiar_texto(row['descripcion'])
                 precio = row['precio']
                 stock = str(row['stock']).upper()
-
+                
                 estado_stock = "✅ Stock" if stock == "SI" else "❌ Sin Stock"
                 respuesta_texto += f"• `{codigo}` - *{nombre}* ({desc})\n  Precio: ${precio} | {estado_stock}\n\n"
-
+                
             respuesta_texto += "*(Escribí el código del producto para sumarlo a tu carrito).* "
 
         else:
             # Búsqueda 2: ¿Escribió un código exacto de producto?
             match_codigo = df_menu[df_menu['codigo'].astype(str).str.lower() == msg_lower]
-
+            
             if not match_codigo.empty:
                 match = match_codigo.iloc[0]
                 stock_disponible = str(match['stock']).strip().upper()
-
+                
                 if stock_disponible != "SI":
                     respuesta_texto = f"❌ Lo sentimos, el producto *{match['nombre']}* se encuentra sin stock por el momento."
                 else:
@@ -216,10 +216,10 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                         desc = limpiar_texto(row['descripcion'])
                         precio = row['precio']
                         stock = str(row['stock']).upper()
-
+                        
                         estado_stock = "✅" if stock == "SI" else "❌ Sin stock"
                         respuesta_texto += f"• `{codigo}` - *{nombre}* {desc}\n  Precio: ${precio} {estado_stock}\n\n"
-
+                        
                     respuesta_texto += "*(Enviá el código del producto para sumarlo a tu pedido).* "
                 else:
                     respuesta_texto = (
@@ -319,7 +319,7 @@ def chat_api():
     data = request.get_json()
     incoming_msg = data.get("message", "")
     session_id = data.get("session_id", "web_default")
-
+    
     respuesta = procesar_logica_minimercado(session_id, incoming_msg)
     return jsonify({"reply": respuesta})
 
@@ -329,13 +329,13 @@ def bot_whatsapp():
     remitente = request.values.get('From', '')
     incoming_msg = request.values.get('Body', '').strip()
     profile_name = request.values.get('ProfileName', 'Cliente')
-
+    
     resp = MessagingResponse()
     respuesta = procesar_logica_minimercado(remitente, incoming_msg, profile_name)
-
+    
     resp.message(respuesta)
     return str(resp)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port, debug=False) 
