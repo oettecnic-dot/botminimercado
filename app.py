@@ -43,7 +43,7 @@ def ttl_cache(ttl_seconds=300):
         return wrapper
     return decorator
 
-# Función auxiliar para leer los datos del Minimercado (Pestaña "Productos")
+# Función auxiliar inteligente para leer los datos del Minimercado de forma segura
 @ttl_cache(ttl_seconds=300)
 def obtener_datos_minimercado():
     try:
@@ -53,11 +53,16 @@ def obtener_datos_minimercado():
         # Lectura directa del CSV público de Google Sheets
         df = pd.read_csv(url_productos)
         
-        # Nos aseguramos de tomar estrictamente las primeras 7 columnas por si hay sobrantes
-        df = df.iloc[:, :7]
+        # Definimos los nombres estándar que necesitamos
+        nombres_base = ['codigo', 'categoria', 'subcategoria', 'nombre', 'descripcion', 'precio', 'stock']
         
-        # Estandarizamos los nombres de las columnas internas para evitar errores
-        df.columns = ['codigo', 'categoria', 'subcategoria', 'nombre', 'descripcion', 'precio', 'stock']
+        # Ajustamos los nombres dinámicamente según las columnas reales que llegan
+        df.columns = nombres_base[:len(df.columns)]
+        
+        # Si Google Sheets envió menos columnas, completamos las faltantes vacías para evitar errores
+        for col in nombres_base[len(df.columns):]:
+            df[col] = ""
+            
         return df
     except Exception as e:
         logging.error(f"Error al leer Google Sheets: {e}")
