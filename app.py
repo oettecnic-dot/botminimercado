@@ -16,7 +16,7 @@ logging.basicConfig(
 app = Flask(__name__)
 
 # ID de Google Sheets obtenido de forma segura desde las Variables de Entorno de Render
-GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1GB6AVyHP4N63i4FrKXw6I1DR087Mm5F0xEGYnF_0_Fk")
+GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1QBXurM6ViFw0qsW9DzFXrsQQZlOADdI3jmFq-4EIm_Q")
 
 # Memoria temporal para los carritos y estados de pago
 carritos_clientes = {}
