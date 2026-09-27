@@ -44,14 +44,14 @@ def ttl_cache(ttl_seconds=300):
         return wrapper
     return decorator
 
-# Función auxiliar inteligente para leer los datos del Minimercado de forma segura
+# Función auxiliar ultra segura para leer los datos de Google Sheets sin errores 404
 @ttl_cache(ttl_seconds=300)
 def obtener_datos_minimercado():
     try:
-        sheet_name = urllib.parse.quote("Productos")
-        url_productos = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+        # Enlace de exportación directa en formato CSV compatible con hojas públicas
+        url_productos = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/export?format=csv"
         
-        # Lectura directa del CSV público de Google Sheets
+        # Lectura directa del CSV
         df = pd.read_csv(url_productos)
         
         # Definimos los nombres estándar que necesitamos
