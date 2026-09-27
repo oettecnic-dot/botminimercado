@@ -3,6 +3,7 @@ import urllib.parse
 import logging
 import time
 from functools import wraps
+import unicodedata
 import pandas as pd
 from flask import Flask, request, render_template_string, jsonify
 from twilio.twiml.messaging_response import MessagingResponse
@@ -16,7 +17,7 @@ logging.basicConfig(
 app = Flask(__name__)
 
 # ID de Google Sheets obtenido de forma segura desde las Variables de Entorno de Render
-GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1QBXurM6ViFw0qsW9DzFXrsQQZlOADdI3jmFq-4EIm_Q")
+GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1LSWRHiVDZDCZHiHqH_M_vhwcKu8VvswDsYQwfTbXQgmk")
 
 # Memoria temporal para los carritos y estados de pago
 carritos_clientes = {}
@@ -68,6 +69,14 @@ def obtener_datos_minimercado():
         logging.error(f"Error al leer Google Sheets: {e}")
         return None
 
+# Función para normalizar texto (quita tildes y pasa a minúsculas para comparar sin errores)
+def normalizar_texto(texto):
+    if pd.isna(texto):
+        return ""
+    texto_str = str(texto).strip().lower()
+    nfkd_form = unicodedata.normalize('NFKD', texto_str)
+    return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
 # Función reforzada para limpiar caracteres especiales que rompen el XML de WhatsApp/Twilio
 def limpiar_texto(texto):
     if pd.isna(texto):
@@ -76,7 +85,9 @@ def limpiar_texto(texto):
 
 # --- LÓGICA CENTRAL DEL BOT DE MINIMERCADO ---
 def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
-    msg_lower = incoming_msg.strip().lower()
+    msg_raw = incoming_msg.strip()
+    msg_lower = normalizar_texto(msg_raw)  # Versión limpia sin tildes y en minúsculas para comparar
+    
     logging.info(f"Mensaje recibido de [{remitente}] ({profile_name}): {incoming_msg}")
 
     if remitente not in carritos_clientes:
@@ -168,9 +179,9 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
             )
 
     else:
-        # Búsqueda 1: ¿Escribió el nombre exacto de una Categoría?
+        # Búsqueda 1: ¿Escribió el nombre de una Categoría (ignorando tildes y mayúsculas)?
         categorias_disponibles = df_menu['categoria'].dropna().unique()
-        categoria_encontrada = next((cat for cat in categorias_disponibles if str(cat).strip().lower() == msg_lower), None)
+        categoria_encontrada = next((cat for cat in categorias_disponibles if normalizar_texto(cat) == msg_lower), None)
 
         if categoria_encontrada:
             grupo = df_menu[df_menu['categoria'] == categoria_encontrada]
@@ -212,14 +223,17 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                         f"*(Escribí 'total' para ver tu carrito o seguí buscando).* "
                     )
             else:
-                # Búsqueda 3: Búsqueda flexible por palabras clave (nombre o descripción)
+                # Búsqueda 3: Búsqueda flexible normalizada (ignora tildes y mayúsculas en nombre y descripción)
+                df_menu['busqueda_nombre'] = df_menu['nombre'].apply(normalizar_texto)
+                df_menu['busqueda_desc'] = df_menu['descripcion'].apply(normalizar_texto)
+                
                 resultados = df_menu[
-                    df_menu['nombre'].astype(str).str.lower().str.contains(msg_lower, na=False) |
-                    df_menu['descripcion'].astype(str).str.lower().str.contains(msg_lower, na=False)
+                    df_menu['busqueda_nombre'].str.contains(msg_lower, na=False) |
+                    df_menu['busqueda_desc'].str.contains(msg_lower, na=False)
                 ]
 
                 if not resultados.empty:
-                    respuesta_texto = f"🔍 *Resultados para \"{incoming_msg}\":*\n\n"
+                    respuesta_texto = f"🔍 *Resultados para \"{msg_raw}\":*\n\n"
                     for _, row in resultados.head(5).iterrows():
                         codigo = limpiar_texto(row['codigo'])
                         nombre = limpiar_texto(row['nombre'])
@@ -233,7 +247,7 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                     respuesta_texto += "*(Enviá el código del producto para sumarlo a tu pedido).* "
                 else:
                     respuesta_texto = (
-                        f"No encontramos productos con el término \"{incoming_msg}\".\n"
+                        f"No encontramos productos con el término \"{msg_raw}\".\n"
                         "💡 Probá escribiendo otra palabra clave o el nombre de una categoría."
                     )
 
