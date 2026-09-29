@@ -17,7 +17,7 @@ logging.basicConfig(
 app = Flask(__name__)
 
 # ID de Google Sheets obtenido de forma segura desde las Variables de Entorno de Render
-GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1LSWRHfVDZDCZHIHqH_M_vhwcKu8VvswDsYQwTbXOgmk")
+GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1LSWRHiVDZDCZHiHqH_M_vhwcKu8VvswDsYQwfTbXQgmk")
 
 # Memoria temporal para los carritos y estados de pago
 carritos_clientes = {}
@@ -83,6 +83,15 @@ def limpiar_texto(texto):
         return ""
     return str(texto).replace('&', 'y').replace('<', '').replace('>', '').replace('"', '').replace("'", "")
 
+# --- FUNCIÓN AUXILIAR PARA GENERAR EL MENÚ DE CATEGORÍAS ---
+def generar_menu_categorias(df_menu):
+    categorias_disponibles = df_menu['categoria'].dropna().unique()
+    texto_categorias = "\n\n📂 *Categorías disponibles:*\n"
+    for cat in categorias_disponibles:
+        texto_categorias += f"🔸 *{str(cat).upper()}*\n"
+    texto_categorias += "\n*(Escribí el nombre de una categoría o el código de un producto).* "
+    return texto_categorias
+
 # --- LÓGICA CENTRAL DEL BOT DE MINIMERCADO ---
 def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
     msg_raw = incoming_msg.strip()
@@ -131,17 +140,13 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
             respuesta_texto = "⚠️ Por favor, respondé con un número válido:\n1️⃣ Efectivo\n2️⃣ Transferencia\n3️⃣ Mercado Pago"
 
     # 1. Saludo inicial
-    elif any(word in msg_lower for word in ["hola", "buenas", "catalogo", "empezar", "comenzar"]):
+    elif any(word in msg_lower for word in ["hola", "buenas", "catalogo", "empezar", "comenzar", "categorias", "menu"]):
         pagos_clientes[remitente] = "ninguno"
-        categorias_disponibles = df_menu['categoria'].dropna().unique()
-        
         respuesta_texto = (
             "¡Hola! Te damos la bienvenida a nuestro *Minimercado* 🛒✨\n\n"
-            "¿Qué estás buscando hoy? Podés escribir el nombre de un producto (ej: *fideos*, *coca*, *aceite*) o elegir una categoría:\n\n"
+            "¿Qué estás buscando hoy? Podés escribir el nombre de un producto (ej: *fideos*, *coca*, *aceite*) o elegir una categoría:"
         )
-        for cat in categorias_disponibles:
-            respuesta_texto += f"🔸 *{str(cat).upper()}*\n"
-        respuesta_texto += "\n*(Escribí el nombre de una categoría o producto para buscar).* "
+        respuesta_texto += generar_menu_categorias(df_menu)
 
     # 2. Ver total / carrito
     elif msg_lower in ["total", "carrito", "pedido"]:
@@ -154,7 +159,7 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
             for item in carrito:
                 detalle += f"• {item['nombre']} — ${item['precio']}\n"
                 total_apagar += item['precio']
-            detalle += f"\n💰 *Total a Pagar: ${total_apagar}*\n\n¿Deseás confirmar tu pedido? Escribí *'confirmar'*."
+            detalle += f"\n💰 *Total a Pagar: ${total_apagar}*\n\n¿Deseás confirmar tu pedido? Escribí *'confirmar'* o seguí comprando."
             respuesta_texto = detalle
 
     # 3. Vaciar carrito
@@ -216,12 +221,14 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                     }
                     carritos_clientes[remitente].append(producto_encontrado)
                     total_parcial = sum(item['precio'] for item in carritos_clientes[remitente])
+                    
+                    # Se agrega el producto y se muestran las categorías automáticamente
                     respuesta_texto = (
                         f"✅ ¡Agregado a tu pedido!\n"
                         f"• *{producto_encontrado['nombre']}* (${producto_encontrado['precio']})\n\n"
-                        f"🛒 Subtotal parcial: *${total_parcial}*\n"
-                        f"*(Escribí 'total' para ver tu carrito o seguí buscando).* "
+                        f"🛒 Subtotal parcial: *${total_parcial}*"
                     )
+                    respuesta_texto += generar_menu_categorias(df_menu)
             else:
                 # Búsqueda 3: Búsqueda flexible normalizada
                 df_menu['busqueda_nombre'] = df_menu['nombre'].apply(normalizar_texto)
@@ -248,8 +255,9 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                 else:
                     respuesta_texto = (
                         f"No encontramos productos con el término \"{msg_raw}\".\n"
-                        "💡 Probá escribiendo otra palabra clave o el nombre de una categoría."
+                        "💡 Probá escribiendo otra palabra clave o elegí una categoría:"
                     )
+                    respuesta_texto += generar_menu_categorias(df_menu)
 
     return respuesta_texto
 
