@@ -17,7 +17,7 @@ logging.basicConfig(
 app = Flask(__name__)
 
 # ID de Google Sheets obtenido de forma segura desde las Variables de Entorno de Render
-GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1LSWRHfVDZDCZHIHqH_M_vhwcKu8VvswDsYQwTbXOgmk")
+GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1LSWRHiVDZDCZHiHqH_M_vhwcKu8VvswDsYQwfTbXQgmk")
 
 # Memoria temporal para los carritos y estados de pago
 carritos_clientes = {}
@@ -83,13 +83,16 @@ def limpiar_texto(texto):
         return ""
     return str(texto).replace('&', 'y').replace('<', '').replace('>', '').replace('"', '').replace("'", "")
 
-# --- FUNCIÓN AUXILIAR PARA GENERAR EL MENÚ DE CATEGORÍAS ---
+# --- FUNCIÓN AUXILIAR PARA GENERAR EL MENÚ DE CATEGORÍAS Y GUÍA DE CIERRE ---
 def generar_menu_categorias(df_menu):
     categorias_disponibles = df_menu['categoria'].dropna().unique()
     texto_categorias = "\n\n📂 *Categorías disponibles:*\n"
     for cat in categorias_disponibles:
         texto_categorias += f"🔸 *{str(cat).upper()}*\n"
-    texto_categorias += "\n*(Escribí el nombre de una categoría o el código de un producto).* "
+    texto_categorias += (
+        "\n*(Escribí el nombre de una categoría o código de producto para seguir sumando).* \n\n"
+        "🛒 ¿Terminaste de elegir? Escribí *'TOTAL'* para ver tu carrito y luego *'CONFIRMAR'* para hacer tu pedido."
+    )
     return texto_categorias
 
 # --- LÓGICA CENTRAL DEL BOT DE MINIMERCADO ---
@@ -152,14 +155,14 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
     elif msg_lower in ["total", "carrito", "pedido"]:
         carrito = carritos_clientes[remitente]
         if not carrito:
-            respuesta_texto = "🛒 *Tu carrito está vacío.*\n\nEscribí el nombre de un producto para empezar a sumar."
+            respuesta_texto = "🛒 *Tu carrito está vacío.*\n\nEscribí el nombre de un producto o categoría para empezar a sumar."
         else:
             detalle = "🛒 *Resumen de tu Pedido:*\n\n"
             total_apagar = 0
             for item in carrito:
                 detalle += f"• {item['nombre']} — ${item['precio']}\n"
                 total_apagar += item['precio']
-            detalle += f"\n💰 *Total a Pagar: ${total_apagar}*\n\n¿Deseás confirmar tu pedido? Escribí *'confirmar'* o seguí comprando."
+            detalle += f"\n💰 *Total a Pagar: ${total_apagar}*\n\n¿Deseás confirmar tu pedido? Escribí *'confirmar'*."
             respuesta_texto = detalle
 
     # 3. Vaciar carrito
@@ -202,7 +205,7 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                 estado_stock = "✅ Stock" if stock == "SI" else "❌ Sin Stock"
                 respuesta_texto += f"• `{codigo}` - *{nombre}* ({desc})\n  Precio: ${precio} | {estado_stock}\n\n"
                 
-            respuesta_texto += "*(Escribí el código del producto para sumarlo a tu carrito).* "
+            respuesta_texto += "*(Escribí el código del producto para sumarlo a tu carrito o 'TOTAL' para finalizar).* "
 
         else:
             # Búsqueda 2: ¿Escribió un código exacto de producto?
@@ -222,7 +225,7 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                     carritos_clientes[remitente].append(producto_encontrado)
                     total_parcial = sum(item['precio'] for item in carritos_clientes[remitente])
                     
-                    # Se agrega el producto y se muestran las categorías automáticamente
+                    # Se agrega el producto, se muestra el subtotal y se invita a seguir o poner TOTAL
                     respuesta_texto = (
                         f"✅ ¡Agregado a tu pedido!\n"
                         f"• *{producto_encontrado['nombre']}* (${producto_encontrado['precio']})\n\n"
@@ -251,7 +254,7 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                         estado_stock = "✅" if stock == "SI" else "❌ Sin stock"
                         respuesta_texto += f"• `{codigo}` - *{nombre}* {desc}\n  Precio: ${precio} {estado_stock}\n\n"
                         
-                    respuesta_texto += "*(Enviá el código del producto para sumarlo a tu pedido).* "
+                    respuesta_texto += "*(Enviá el código del producto para sumarlo o escribí 'TOTAL' para ver tu carrito).* "
                 else:
                     respuesta_texto = (
                         f"No encontramos productos con el término \"{msg_raw}\".\n"
@@ -327,7 +330,7 @@ def home():
                     const data = await response.json();
                     appendMessage(data.reply, "bot");
                 } catch (error) {
-                    appendMessage("⚠️ Error de conexión con el servidor.", "bot");
+                    appendMessage("⚠️️ Error de conexión con el servidor.", "bot");
                 }
             }
 
