@@ -44,12 +44,12 @@ def ttl_cache(ttl_seconds=300):
         return wrapper
     return decorator
 
-# Función auxiliar ultra segura para leer los datos de Google Sheets sin errores 404
+# Función auxiliar ultra segura para leer los datos de Google Sheets sin errores
 @ttl_cache(ttl_seconds=300)
 def obtener_datos_minimercado():
     try:
-        # Enlace de exportación directa en formato CSV compatible con hojas públicas
-        url_productos = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/export?format=csv"
+        # Enlace de exportación CSV específico para la primera solapa (gid=0)
+        url_productos = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/export?format=csv&gid=0"
         
         # Lectura directa del CSV
         df = pd.read_csv(url_productos)
@@ -179,7 +179,7 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
             )
 
     else:
-        # Búsqueda 1: ¿Escribió el nombre de una Categoría (ignorando tildes y mayúsculas)?
+        # Búsqueda 1: ¿Escribió el nombre de una Categoría?
         categorias_disponibles = df_menu['categoria'].dropna().unique()
         categoria_encontrada = next((cat for cat in categorias_disponibles if normalizar_texto(cat) == msg_lower), None)
 
@@ -223,7 +223,7 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                         f"*(Escribí 'total' para ver tu carrito o seguí buscando).* "
                     )
             else:
-                # Búsqueda 3: Búsqueda flexible normalizada (ignora tildes y mayúsculas en nombre y descripción)
+                # Búsqueda 3: Búsqueda flexible normalizada
                 df_menu['busqueda_nombre'] = df_menu['nombre'].apply(normalizar_texto)
                 df_menu['busqueda_desc'] = df_menu['descripcion'].apply(normalizar_texto)
                 
