@@ -17,7 +17,7 @@ logging.basicConfig(
 app = Flask(__name__)
 
 # ID de Google Sheets obtenido de forma segura desde las Variables de Entorno de Render
-GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1LSWRHfVDZDCZHIHqH_M_vhwcKu8VvswDsYQwTbXOgmk")
+GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1LSWRHiVDZDCZHiHqH_M_vhwcKu8VvswDsYQwfTbXQgmk")
 
 # Memoria temporal para los carritos y estados de pago
 carritos_clientes = {}
@@ -128,7 +128,7 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                 instrucciones = "Alias para transferir: *minimercado.mp*\n(Envíanos el comprobante)."
             else:
                 metodo = "Mercado Pago"
-                instrucciones = "Podés abonar con dinero en cuenta al recibir."
+                instrucciones = "Alias para abonar: *supermercado.mp*\n(Envíanos el comprobante)."
 
             respuesta_texto = (
                 f"✅ ¡Pedido confirmado con éxito, {nombre_cliente}!\n\n"
@@ -225,7 +225,6 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                     carritos_clientes[remitente].append(producto_encontrado)
                     total_parcial = sum(item['precio'] for item in carritos_clientes[remitente])
                     
-                    # Se agrega el producto, se muestra el subtotal y se invita a seguir o poner TOTAL
                     respuesta_texto = (
                         f"✅ ¡Agregado a tu pedido!\n"
                         f"• *{producto_encontrado['nombre']}* (${producto_encontrado['precio']})\n\n"
@@ -330,7 +329,7 @@ def home():
                     const data = await response.json();
                     appendMessage(data.reply, "bot");
                 } catch (error) {
-                    appendMessage("⚠️️ Error de conexión con el servidor.", "bot");
+                    appendMessage("⚠️ Error de conexión con el servidor.", "bot");
                 }
             }
 
