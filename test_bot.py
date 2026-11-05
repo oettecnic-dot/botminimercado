@@ -1,4 +1,4 @@
-import unittest2
+import unittest
 from app import procesar_logica_minimercado, carritos_clientes, pagos_clientes
 
 class TestBotMinimercado(unittest.TestCase):
