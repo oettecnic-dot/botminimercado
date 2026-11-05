@@ -1,30 +1,29 @@
-import unittest
-from app import procesar_logica_minimercado, carritos_clientes, pagos_clientes
+name: CI Bot Minimercado
 
-class TestBotMinimercado(unittest.TestCase):
-    
-    def setUp(self):
-        """Se ejecuta antes de cada test para limpiar la memoria de los clientes de prueba."""
-        self.test_user = "whatsapp:+5491199999999"
-        carritos_clientes[self.test_user] = []
-        pagos_clientes[self.test_user] = "ninguno"
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
 
-    def test_saludo_inicial(self):
-        """Verifica que el bot responda al saludo inicial según las reglas del spec.md."""
-        respuesta = procesar_logica_minimercado(self.test_user, "Hola")
-        self.assertIn("Minimercado", respuesta)
-        self.assertIn("Categorías disponibles", respuesta)
+jobs:
+  test:
+    runs-on: ubuntu-latest
 
-    def test_carrito_vacio(self):
-        """Verifica el comportamiento al consultar un carrito vacío."""
-        respuesta = procesar_logica_minimercado(self.test_user, "total")
-        self.assertIn("vacío", respuesta.lower())
+    steps:
+    - name: Copiar código del repositorio
+      uses: actions/checkout@v4
 
-    def test_flujo_pago_invalido(self):
-        """Verifica que el bot rechace opciones de pago fuera de rango (1, 2, 3)."""
-        pagos_clientes[self.test_user] = "pendiente"
-        respuesta = procesar_logica_minimercado(self.test_user, "9")
-        self.assertIn("válido", respuesta.lower()) or self.assertIn("inválida", respuesta.lower())
+    - name: Configurar Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
 
-if __name__ == "__main__":
-    unittest.main()
+    - name: Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Ejecutar pruebas unitarias
+      run: |
+        python test_bot.py
