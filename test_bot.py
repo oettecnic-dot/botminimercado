@@ -27,4 +27,4 @@ class TestBotMinimercado(unittest.TestCase):
         self.assertIn("válido", respuesta.lower()) or self.assertIn("inválida", respuesta.lower())
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main()1
