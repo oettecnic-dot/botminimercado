@@ -98,7 +98,7 @@ def generar_menu_categorias(df_menu):
 # --- LÓGICA CENTRAL DEL BOT DE MINIMERCADO ---
 def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
     msg_raw = incoming_msg.strip()
-    msg_lower = normalizar_texto(msg_raw)  # Versión limpia sin tildes y en minúsculas para comparar
+    msg_lower = normalizar_texto(msg_raw)
     
     logging.info(f"Mensaje recibido de [{remitente}] ({profile_name}): {incoming_msg}")
 
@@ -187,7 +187,6 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
             )
 
     else:
-        # Búsqueda 1: ¿Escribió el nombre de una Categoría?
         categorias_disponibles = df_menu['categoria'].dropna().unique()
         categoria_encontrada = next((cat for cat in categorias_disponibles if normalizar_texto(cat) == msg_lower), None)
 
@@ -208,7 +207,6 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
             respuesta_texto += "*(Escribí el código del producto para sumarlo a tu carrito o 'TOTAL' para finalizar).* "
 
         else:
-            # Búsqueda 2: ¿Escribió un código exacto de producto?
             match_codigo = df_menu[df_menu['codigo'].astype(str).str.lower() == msg_lower]
             
             if not match_codigo.empty:
@@ -232,7 +230,6 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                     )
                     respuesta_texto += generar_menu_categorias(df_menu)
             else:
-                # Búsqueda 3: Búsqueda flexible normalizada
                 df_menu['busqueda_nombre'] = df_menu['nombre'].apply(normalizar_texto)
                 df_menu['busqueda_desc'] = df_menu['descripcion'].apply(normalizar_texto)
                 
@@ -298,28 +295,19 @@ def home():
                 <button onclick="sendMessage()">Enviar</button>
             </div>
         </div>
-
         <script>
             let sessionId = localStorage.getItem("web_session_id");
             if (!sessionId) {
                 sessionId = "web_" + Math.random().toString(36).substring(2, 9);
                 localStorage.setItem("web_session_id", sessionId);
             }
-
-            function handleKeyPress(event) {
-                if (event.key === "Enter") {
-                    sendMessage();
-                }
-            }
-
+            function handleKeyPress(event) { if (event.key === "Enter") { sendMessage(); } }
             async function sendMessage() {
                 const input = document.getElementById("userInput");
                 const text = input.value.trim();
                 if (!text) return;
-
                 appendMessage(text, "user");
                 input.value = "";
-
                 try {
                     const response = await fetch("/chat-api", {
                         method: "POST",
@@ -332,7 +320,6 @@ def home():
                     appendMessage("⚠️ Error de conexión con el servidor.", "bot");
                 }
             }
-
             function appendMessage(text, sender) {
                 const messagesContainer = document.getElementById("chatMessages");
                 const msgDiv = document.createElement("div");
@@ -347,29 +334,24 @@ def home():
     """
     return render_template_string(html_template)
 
-# --- API PARA CHAT WEB ---
 @app.route("/chat-api", methods=["POST"])
 def chat_api():
     data = request.get_json()
     incoming_msg = data.get("message", "")
     session_id = data.get("session_id", "web_default")
-    
     respuesta = procesar_logica_minimercado(session_id, incoming_msg)
     return jsonify({"reply": respuesta})
 
-# --- WEBHOOK DE WHATSAPP ---
 @app.route("/bot", methods=["POST"])
 def bot_whatsapp():
     remitente = request.values.get('From', '')
     incoming_msg = request.values.get('Body', '').strip()
     profile_name = request.values.get('ProfileName', 'Cliente')
-    
     resp = MessagingResponse()
     respuesta = procesar_logica_minimercado(remitente, incoming_msg, profile_name)
-    
     resp.message(respuesta)
     return str(resp)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False) 
+    app.run(host="0.0.0.0", port=port, debug=False)
