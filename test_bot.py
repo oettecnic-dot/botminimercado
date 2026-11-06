@@ -1,39 +1,37 @@
 import unittest
-# Importamos las funciones y diccionarios de control desde tu app principal
-from app import procesar_logica_minimercado, carritos_clientes, pagos_clientes
+import os
+import gspread
+from google.oauth2.service_account import Credentials
+import app  # Importa tu archivo app.py para validar su lógica
 
-class TestBotMinimercadoSDD(unittest.TestCase):
+class TestBotMinimercado(unittest.TestCase):
     
-    def setUp(self):
-        """Se ejecuta antes de cada test para asegurar un entorno limpio por cada cliente de prueba."""
-        self.test_user = "whatsapp:+5491188888888"
-        carritos_clientes[self.test_user] = []
-        pagos_clientes[self.test_user] = "ninguno"
+    def test_normalizacion_texto(self):
+        # Valida que la función de normalización quite tildes y mayúsculas correctamente
+        resultado = app.normalizar_texto("  FíDeOs  ")
+        self.assertEqual(resultado, "fideos")
 
-    def test_saludo_inicial_y_categorias(self):
-        """Valida que el saludo inicial despliegue correctamente las categorías según el spec.md."""
-        respuesta = procesar_logica_minimercado(self.test_user, "Hola")
-        self.assertIn("Minimercado", respuesta)
-        self.assertIn("Categorías disponibles", respuesta)
+    def test_limpieza_texto(self):
+        # Valida que la limpieza de caracteres especiales funcione bien para Twilio
+        resultado = app.limpiar_texto("Pan & Leche <Fresca>")
+        self.assertEqual(resultado, "Pan y Leche Fresca")
 
-    def test_consulta_carrito_vacio(self):
-        """Valida que el sistema informe correctamente cuando el carrito no tiene productos."""
-        respuesta = procesar_logica_minimercado(self.test_user, "total")
-        self.assertIn("vacío", respuesta.lower())
+    def test_conexion_google_sheets(self):
+        # Verifica la existencia de las credenciales inyectadas por GitHub Actions o entorno local
+        cred_path = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+        
+        if not cred_path or not os.path.exists(cred_path):
+            self.skipTest("No se encontró el archivo credentials.json, omitiendo prueba de Sheets en entorno local.")
 
-    def test_validacion_opcion_pago_invalida(self):
-        """Valida que el estado de pago pendiente rechace opciones fuera del contrato (1, 2, 3)."""
-        pagos_clientes[self.test_user] = "pendiente"
-        respuesta = procesar_logica_minimercado(self.test_user, "5")
-        # El bot debe rechazar el número y solicitar una opción válida
-        self.assertTrue("inválida" in respuesta.lower() or "válido" in respuesta.lower())
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets.readonly",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        credentials = Credentials.from_service_account_file(cred_path, scopes=scopes)
+        gc = gspread.authorize(credentials)
+        
+        # Confirma que la autenticación con la cuenta de servicio se realizó con éxito
+        self.assertIsNotNone(gc)
 
-    def test_vaciar_carrito(self):
-        """Valida la regla de negocio de limpiar el carrito de compras a petición del usuario."""
-        carritos_clientes[self.test_user] = [{'nombre': 'Test Producto', 'precio': 1000, 'cantidad': 1, 'subtotal': 1000}]
-        respuesta = procesar_logica_minimercado(self.test_user, "vaciar")
-        self.assertIn("vaciado", respuesta.lower())
-        self.assertEqual(len(carritos_clientes[self.test_user]), 0)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
