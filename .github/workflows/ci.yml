@@ -2,9 +2,9 @@ name: CI Bot Minimercado
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ main ]
 
 jobs:
   test:
@@ -22,8 +22,14 @@ jobs:
     - name: Instalar dependencias
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Configurar credenciales de Google desde Secretos
+      run: |
+        echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
 
     - name: Ejecutar pruebas unitarias
+      env:
+        GOOGLE_APPLICATION_CREDENTIALS: credentials.json
       run: |
-        python test_bot.py
+        python test_bot.py 
