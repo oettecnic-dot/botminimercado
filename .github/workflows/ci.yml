@@ -28,8 +28,9 @@ jobs:
       run: |
         echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
 
-    - name: Ejecutar pruebas unitarias
-      env:
-        GOOGLE_APPLICATION_CREDENTIALS: credentials.json
-      run: |
-        python test_bot.py 
+   - name: Ejecutar pruebas unitarias
+    env:
+      GCP_CLIENT_EMAIL: ${{ secrets.GCP_CLIENT_EMAIL }}
+      GCP_PRIVATE_KEY: ${{ secrets.GCP_PRIVATE_KEY }}
+    run: |
+      python test_bot.py
