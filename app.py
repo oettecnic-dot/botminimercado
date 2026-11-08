@@ -98,7 +98,7 @@ def generar_menu_categorias(df_menu):
 # --- LÓGICA CENTRAL DEL BOT DE MINIMERCADO ---
 def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
     msg_raw = incoming_msg.strip()
-    msg_lower = normalizar_texto(msg_raw)
+    msg_lower = normalizar_texto(msg_raw)  # Versión limpia sin tildes y en minúsculas
     
     logging.info(f"Mensaje recibido de [{remitente}] ({profile_name}): {incoming_msg}")
 
@@ -187,8 +187,14 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
             )
 
     else:
-        categorias_disponibles = df_menu['categoria'].dropna().unique()
-        categoria_encontrada = next((cat for cat in categorias_disponibles if normalizar_texto(cat) == msg_lower), None)
+        # Preparamos columnas normalizadas en el DataFrame para comparar sin tildes, mayúsculas ni abreviaturas estrictas
+        df_menu['cat_norm'] = df_menu['categoria'].apply(normalizar_texto)
+        df_menu['nom_norm'] = df_menu['nombre'].apply(normalizar_texto)
+        df_menu['desc_norm'] = df_menu['descripcion'].apply(normalizar_texto)
+        df_menu['cod_norm'] = df_menu['codigo'].apply(normalizar_texto)
+
+        # Búsqueda 1: ¿Escribió el nombre de una Categoría (con tolerancia a tildes/mayúsculas)?
+        categoria_encontrada = next((cat for cat in df_menu['categoria'].dropna().unique() if normalizar_texto(cat) == msg_lower), None)
 
         if categoria_encontrada:
             grupo = df_menu[df_menu['categoria'] == categoria_encontrada]
@@ -207,7 +213,8 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
             respuesta_texto += "*(Escribí el código del producto para sumarlo a tu carrito o 'TOTAL' para finalizar).* "
 
         else:
-            match_codigo = df_menu[df_menu['codigo'].astype(str).str.lower() == msg_lower]
+            # Búsqueda 2: ¿Escribió un código exacto de producto (insensible a mayúsculas)?
+            match_codigo = df_menu[df_menu['cod_norm'] == msg_lower]
             
             if not match_codigo.empty:
                 match = match_codigo.iloc[0]
@@ -230,12 +237,10 @@ def procesar_logica_minimercado(remitente, incoming_msg, profile_name=None):
                     )
                     respuesta_texto += generar_menu_categorias(df_menu)
             else:
-                df_menu['busqueda_nombre'] = df_menu['nombre'].apply(normalizar_texto)
-                df_menu['busqueda_desc'] = df_menu['descripcion'].apply(normalizar_texto)
-                
+                # Búsqueda 3: Búsqueda flexible ampliada (acepta palabras parciales, sin tildes, abreviadas o con variaciones)
                 resultados = df_menu[
-                    df_menu['busqueda_nombre'].str.contains(msg_lower, na=False) |
-                    df_menu['busqueda_desc'].str.contains(msg_lower, na=False)
+                    df_menu['nom_norm'].str.contains(msg_lower, na=False) |
+                    df_menu['desc_norm'].str.contains(msg_lower, na=False)
                 ]
 
                 if not resultados.empty:
